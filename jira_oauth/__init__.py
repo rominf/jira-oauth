@@ -123,7 +123,7 @@ class JiraOAuth:
 
         query = dict(oauth_token=self.request_token['oauth_token'])
         if self.redirect_url is not None:
-            query.update(oauth_callback=self.redirect_url)
+            query.update(oauth_callback=str(self.redirect_url))
         self.url = str(URL(authorize_url).with_query(query))
 
     async def generate_access_token(self):
