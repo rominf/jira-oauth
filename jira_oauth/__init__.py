@@ -69,7 +69,7 @@ class JiraOAuth:
         self.loop = loop
         self.consumer = None
         self.request_token = None
-        self.url = None
+        self.auth_url = None
         self.access_token = {}
         self._oauth_result_lock: asyncio.Lock = None
 
@@ -124,7 +124,7 @@ class JiraOAuth:
         query = dict(oauth_token=self.request_token['oauth_token'])
         if self.redirect_url is not None:
             query.update(oauth_callback=str(self.redirect_url))
-        self.url = str(URL(authorize_url).with_query(query))
+        self.auth_url = str(URL(authorize_url).with_query(query))
 
     async def generate_access_token(self):
         # Step 3: Once the consumer has redirected the user back to the oauth_callback

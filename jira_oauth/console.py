@@ -19,7 +19,7 @@ class JiraOAuthConsole:
         # Step 2: Redirect to the provider. Since this is a CLI script we do not
         # redirect. In a web application you would redirect the user to the URL
         # below.
-        print(f"Go to the following link in your browser: {self.jira_oauth.url}")
+        print(f"Go to the following link in your browser: {self.jira_oauth.auth_url}")
 
     async def check_access_token(self) -> None:
         print(f"Accessing {self.jira_oauth.test_jira_issue} using generated OAuth tokens:")
