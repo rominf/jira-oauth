@@ -34,16 +34,15 @@ $ openssl rsa -in oauth.pem -pubout -out oauth.pub
 Create **starter_oauth.config** in **~/.oauthconfig** folder:
 ```ini
 [oauth_config]
-jira_base_url=https://jira.example.com
+jira_url=https://jira.example.com
 consumer_key=jira-oauth1-rest-api-access
-test_jira_issue=EXJIRA-123
+test_jira_issue=IDEV-1
 ```
 
 ## Perform Jira OAuth Dance
-* Make sure you are in base directory of this Repo
 * Python Virtual Environment that we create earlier is active.
-* Run **jira-oauth**
-* Authenticate in browser as directed below and then click **y** for question *Have you authorized me?*
+* Run **jira-oauth**.
+* Authenticate in browser as directed below.
 * After successful OAuth generation, you will get another set of values for **oauth_token** and **oauth_token_secret**. These are you tokens that you need to use access Jira without passing credentials.
 ```
 $ jira-oauth
