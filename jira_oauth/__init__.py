@@ -19,6 +19,10 @@ PathOrStr = Union[Path, str]
 
 
 class JiraOAuth:
+    AUTH_RESPONSE_TEXT_DEFAULT = ('<!DOCTYPE html><html>'
+            '<head><script type="text/javascript">window.close()</script></head>'
+            '<body>Authorization was successful. You can close this page now.</body></html>')
+
     oauth_config_dir_path = Path.home() / '.oauthconfig'
     starter_oauth_config_file = oauth_config_dir_path / 'starter_oauth.config'
     rsa_private_key_file_path = oauth_config_dir_path / 'oauth.pem'
@@ -58,7 +62,8 @@ class JiraOAuth:
     def __init__(self, consumer_key: Optional[str] = None, jira_url: Optional[str] = None,
                  rsa_private_key: Optional[str] = None, rsa_public_key: Optional[str] = None,
                  test_jira_issue: Optional[str] = None, redirect_url: Optional[str] = None,
-                 app: Optional[Application] = None, loop: Optional[asyncio.AbstractEventLoop] = None):
+                 app: Optional[Application] = None, auth_response_text: str = AUTH_RESPONSE_TEXT_DEFAULT,
+                 loop: Optional[asyncio.AbstractEventLoop] = None):
         self.consumer_key = consumer_key
         self.jira_url = jira_url
         self.rsa_private_key = rsa_private_key
@@ -66,6 +71,7 @@ class JiraOAuth:
         self.test_jira_issue = test_jira_issue
         self.redirect_url = redirect_url
         self.app = app
+        self.auth_response_text = auth_response_text
         self.loop = loop
         self.consumer = None
         self.request_token = None
@@ -159,4 +165,4 @@ class JiraOAuth:
     async def process_oauth_result(self, request: Request) -> Response:
         if request.query['oauth_token'] == self.request_token['oauth_token']:
             self._oauth_result_lock.release()
-        return HTTPOk()
+        return Response(text=self.auth_response_text, content_type='text/html')
