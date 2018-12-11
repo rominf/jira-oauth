@@ -54,7 +54,7 @@ class JiraOAuth:
                  rsa_private_key: Optional[str] = None, rsa_public_key: Optional[str] = None,
                  test_jira_issue: Optional[str] = None, redirect_url: Optional[str] = None):
         self.consumer_key = consumer_key
-        self.jira_base_url = jira_url
+        self.jira_url = jira_url
         self.rsa_private_key = rsa_private_key
         self.rsa_public_key = rsa_public_key
         self.test_jira_issue = test_jira_issue
@@ -72,11 +72,12 @@ class JiraOAuth:
 
     @property
     def _access_token_url(self) -> str:
-        return f'{self.jira_base_url}/plugins/servlet/oauth/access-token'
+        return str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/access-token'))
 
     @property
     def data_url(self) -> str:
-        return f'{self.jira_base_url}/rest/api/2/issue/{self.test_jira_issue}?fields=summary'
+        return str(
+            URL(self.jira_url).with_path(path=f'/rest/api/2/issue/{self.test_jira_issue}').with_query(fields='summary'))
 
     @staticmethod
     def _read_file(path: PathOrStr) -> str:
@@ -89,14 +90,14 @@ class JiraOAuth:
         config.read(self.starter_oauth_config_file)
 
         self.consumer_key = config.get("oauth_config", "consumer_key")
-        self.jira_base_url = config.get("oauth_config", "jira_base_url")
+        self.jira_url = config.get("oauth_config", "jira_url")
         self.rsa_private_key = self._read_file(path=self.rsa_private_key_file_path)
         self.rsa_public_key = self._read_file(path=self.rsa_public_key_file_path)
         self.test_jira_issue = config.get("oauth_config", "test_jira_issue")
 
     async def generate_request_token_and_auth_url(self) -> None:
-        request_token_url = f'{self.jira_base_url}/plugins/servlet/oauth/request-token'
-        authorize_url = f'{self.jira_base_url}/plugins/servlet/oauth/authorize'
+        request_token_url = str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/request-token'))
+        authorize_url = str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/authorize'))
 
         self.consumer = oauth2.Consumer(key=self.consumer_key, secret=self.rsa_public_key)
         client = await aioauth2.Client.create(consumer=self.consumer)
