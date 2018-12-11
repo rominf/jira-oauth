@@ -6,6 +6,7 @@ import base64
 
 from aioify import aioify
 from tlslite.utils import keyfactory
+from yarl import URL
 import aioauth2
 import oauth2
 
@@ -51,12 +52,13 @@ class JiraOAuth:
 
     def __init__(self, consumer_key: Optional[str] = None, jira_url: Optional[str] = None,
                  rsa_private_key: Optional[str] = None, rsa_public_key: Optional[str] = None,
-                 test_jira_issue: Optional[str] = None):
+                 test_jira_issue: Optional[str] = None, redirect_url: Optional[str] = None):
         self.consumer_key = consumer_key
         self.jira_base_url = jira_url
         self.rsa_private_key = rsa_private_key
         self.rsa_public_key = rsa_public_key
         self.test_jira_issue = test_jira_issue
+        self.redirect_url = redirect_url
         self.consumer = None
         self.request_token = None
         self.url = None
@@ -113,7 +115,10 @@ class JiraOAuth:
             content = content.decode('UTF-8')
 
         self.request_token = dict(parse.parse_qsl(content))
-        self.url = f"{authorize_url}?oauth_token={self.request_token['oauth_token']}"
+        query = dict(oauth_token=self.request_token['oauth_token'])
+        if self.redirect_url is not None:
+            query.update(oauth_callback=self.redirect_url)
+        self.url = str(URL(authorize_url).with_query(query))
 
     async def generate_access_token(self):
         # Step 3: Once the consumer has redirected the user back to the oauth_callback
