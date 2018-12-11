@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+import asyncio
 import json
 
-import oauth2 as oauth
+import aioauth2
+import oauth2
 
 from jira_oauth import JiraOAuth
 
@@ -22,16 +24,17 @@ class JiraOAuthConsole:
         while accepted.lower() == 'n':
             accepted = input('Have you authorized me? (y/n) ')
 
-    def check_access_token(self) -> None:
+    async def check_access_token(self) -> None:
         print(f"Accessing {self.jira_oauth.test_jira_issue} using generated OAuth tokens:")
 
         # Now lets try to access the same issue again with the access token. We should get a 200!
-        token = oauth.Token(key=self.jira_oauth.access_token['oauth_token'],
-                            secret=self.jira_oauth.access_token['oauth_token_secret'])
-        client = oauth.Client(consumer=self.jira_oauth.consumer, token=token)
-        client.set_signature_method(JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.jira_oauth.rsa_private_key))
+        token = oauth2.Token(key=self.jira_oauth.access_token['oauth_token'],
+                             secret=self.jira_oauth.access_token['oauth_token_secret'])
+        client = await aioauth2.Client.create(consumer=self.jira_oauth.consumer, token=token)
+        signature_method = JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.jira_oauth.rsa_private_key)
+        await client.set_signature_method(method=signature_method)
 
-        resp, content = client.request(uri=self.jira_oauth.data_url, method="GET")
+        resp, content = await client.request(uri=self.jira_oauth.data_url, method="GET")
         if resp['status'] != '200':
             raise Exception("Should have access!")
 
@@ -43,9 +46,9 @@ class JiraOAuthConsole:
         print(f'Issue key: {json_content["key"]}, Summary: {json_content["fields"]["summary"]} ')
 
 
-def main():
+async def main():
     jira_oauth = JiraOAuth.from_file()
-    jira_oauth.generate_request_token_and_auth_url()
+    await jira_oauth.generate_request_token_and_auth_url()
     jira_oauth_console = JiraOAuthConsole(jira_oauth=jira_oauth)
     print(f"Request Token: oauth_token={jira_oauth.request_token['oauth_token']}, "
           f"oauth_token_secret={jira_oauth.request_token['oauth_token_secret']}")
@@ -53,15 +56,16 @@ def main():
     access_token = {'oauth_problem': True}
     while 'oauth_problem' in access_token:
         jira_oauth_console.print_url_and_ask_for_continue()
-        jira_oauth.generate_access_token()
+        await jira_oauth.generate_access_token()
         access_token = jira_oauth.access_token
     print()
     print(f"Access Token: oauth_token={jira_oauth.access_token['oauth_token']}, "
           f"oauth_token_secret={jira_oauth.access_token['oauth_token_secret']}")
     print("You may now access protected resources using the access tokens above.")
     print()
-    jira_oauth_console.check_access_token()
+    await jira_oauth_console.check_access_token()
 
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(future=main())

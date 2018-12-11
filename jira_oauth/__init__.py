@@ -4,8 +4,10 @@ from typing import Union, Optional, Tuple
 from urllib import parse
 import base64
 
+from aioify import aioify
 from tlslite.utils import keyfactory
-import oauth2 as oauth
+import aioauth2
+import oauth2
 
 
 PathOrStr = Union[Path, str]
@@ -18,27 +20,28 @@ class JiraOAuth:
     rsa_public_key_file_path = oauth_config_dir_path / 'oauth.pub'
 
     # noinspection PyPep8Naming
-    class SignatureMethod_RSA_SHA1(oauth.SignatureMethod):
+    class SignatureMethod_RSA_SHA1(oauth2.SignatureMethod):
         name = 'RSA-SHA1'
 
         def __init__(self, rsa_private_key: str):
             self.rsa_private_key = rsa_private_key.strip()
 
-        def signing_base(self, request: oauth.Request, consumer: oauth.Consumer, token: oauth.Token) -> Tuple[str, str]:
+        def signing_base(self, request: oauth2.Request, consumer: oauth2.Consumer,
+                         token: oauth2.Token) -> Tuple[str, str]:
             if not hasattr(request, 'normalized_url') or request.normalized_url is None:
                 raise ValueError("Base URL for request is not set.")
 
             sig = (
-                oauth.escape(request.method),
-                oauth.escape(request.normalized_url),
-                oauth.escape(request.get_normalized_parameters()),
+                oauth2.escape(request.method),
+                oauth2.escape(request.normalized_url),
+                oauth2.escape(request.get_normalized_parameters()),
             )
 
-            key = f'oauth.escape(consumer.secret)&{oauth.escape(token.secret) if token else ""}'
+            key = f'oauth.escape(consumer.secret)&{oauth2.escape(token.secret) if token else ""}'
             raw = '&'.join(sig)
             return key, raw
 
-        def sign(self, request: oauth.Request, consumer: oauth.Consumer, token: oauth.Token) -> bytes:
+        def sign(self, request: oauth2.Request, consumer: oauth2.Consumer, token: oauth2.Token) -> bytes:
             """Builds the base signature string."""
             key, raw = self.signing_base(request=request, consumer=consumer, token=token)
             private_key = keyfactory.parsePrivateKey(self.rsa_private_key)
@@ -89,20 +92,21 @@ class JiraOAuth:
         self.rsa_public_key = self._read_file(path=self.rsa_public_key_file_path)
         self.test_jira_issue = config.get("oauth_config", "test_jira_issue")
 
-    def generate_request_token_and_auth_url(self) -> None:
+    async def generate_request_token_and_auth_url(self) -> None:
         request_token_url = f'{self.jira_base_url}/plugins/servlet/oauth/request-token'
         authorize_url = f'{self.jira_base_url}/plugins/servlet/oauth/authorize'
 
-        self.consumer = oauth.Consumer(key=self.consumer_key, secret=self.rsa_public_key)
-        client = oauth.Client(consumer=self.consumer)
-        client.set_signature_method(JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.rsa_private_key))
+        self.consumer = oauth2.Consumer(key=self.consumer_key, secret=self.rsa_public_key)
+        client = await aioauth2.Client.create(consumer=self.consumer)
+        signature_method = JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.rsa_private_key)
+        await client.set_signature_method(method=signature_method)
 
         # Step 1: Get a request token. This is a temporary token that is used for
         # having the user authorize an access token and to sign the request to obtain
         # said access token.
-        resp, content = client.request(request_token_url, "POST")
+        resp, content = await client.request(uri=request_token_url, method="POST")
         if resp['status'] != '200':
-            raise Exception("Invalid response %s: %s" % (resp['status'], content))
+            raise Exception(f"Invalid response resp['status']: content")
 
         # If output is in bytes. Let's convert it into String.
         if type(content) == bytes:
@@ -111,21 +115,20 @@ class JiraOAuth:
         self.request_token = dict(parse.parse_qsl(content))
         self.url = f"{authorize_url}?oauth_token={self.request_token['oauth_token']}"
 
-    def generate_access_token(self):
+    async def generate_access_token(self):
         # Step 3: Once the consumer has redirected the user back to the oauth_callback
         # URL you can request the access token the user has approved. You use the
         # request token to sign this request. After this is done you throw away the
         # request token and use the access token returned. You should store this
         # access token somewhere safe, like a database, for future use.
-        token = oauth.Token(key=self.request_token['oauth_token'], secret=self.request_token['oauth_token_secret'])
+        token = oauth2.Token(key=self.request_token['oauth_token'], secret=self.request_token['oauth_token_secret'])
         # token.set_verifier(oauth_verifier)
-        client = oauth.Client(consumer=self.consumer, token=token)
-        client.set_signature_method(JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.rsa_private_key))
+        client = await aioauth2.Client.create(consumer=self.consumer, token=token)
+        await client.set_signature_method(JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.rsa_private_key))
 
-        resp, content = client.request(uri=self._access_token_url, method="POST")
+        resp, content = await client.request(uri=self._access_token_url, method="POST")
         # Response is coming in bytes. Let's convert it into String.
         # If output is in bytes. Let's convert it into String.
         if type(content) == bytes:
             content = content.decode('UTF-8')
         self.access_token = dict(parse.parse_qsl(qs=content))
-
