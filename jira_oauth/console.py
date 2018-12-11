@@ -2,6 +2,9 @@
 import asyncio
 import json
 
+from aiohttp import web
+from aiohttp.web_app import Application
+from aiohttp.web_runner import AppRunner, TCPSite
 import aioauth2
 import oauth2
 
@@ -12,17 +15,11 @@ class JiraOAuthConsole:
     def __init__(self, jira_oauth: JiraOAuth):
         self.jira_oauth = jira_oauth
 
-    def print_url_and_ask_for_continue(self) -> None:
+    def print_url(self) -> None:
         # Step 2: Redirect to the provider. Since this is a CLI script we do not
         # redirect. In a web application you would redirect the user to the URL
         # below.
         print(f"Go to the following link in your browser: {self.jira_oauth.url}")
-        # After the user has granted access to you, the consumer, the provider will
-        # redirect you to whatever URL you have told them to redirect to. You can
-        # usually define this in the oauth_callback argument as well.
-        accepted = 'n'
-        while accepted.lower() == 'n':
-            accepted = input('Have you authorized me? (y/n) ')
 
     async def check_access_token(self) -> None:
         print(f"Accessing {self.jira_oauth.test_jira_issue} using generated OAuth tokens:")
@@ -46,18 +43,27 @@ class JiraOAuthConsole:
         print(f'Issue key: {json_content["key"]}, Summary: {json_content["fields"]["summary"]} ')
 
 
-async def main():
+# noinspection PyShadowingNames
+async def main(loop: asyncio.AbstractEventLoop) -> None:
     jira_oauth = JiraOAuth.from_file()
+
+    jira_oauth.app = Application()
+    jira_oauth.app.add_routes([web.get('/', jira_oauth.process_oauth_result)])
+    runner = AppRunner(app=jira_oauth.app)
+    await runner.setup()
+    site = TCPSite(runner=runner)
+    await site.start()
+
+    jira_oauth.redirect_url = 'http://localhost:8080/'
+    jira_oauth.loop = loop
+
     await jira_oauth.generate_request_token_and_auth_url()
     jira_oauth_console = JiraOAuthConsole(jira_oauth=jira_oauth)
     print(f"Request Token: oauth_token={jira_oauth.request_token['oauth_token']}, "
           f"oauth_token_secret={jira_oauth.request_token['oauth_token_secret']}")
     print()
-    access_token = {'oauth_problem': True}
-    while 'oauth_problem' in access_token:
-        jira_oauth_console.print_url_and_ask_for_continue()
-        await jira_oauth.generate_access_token()
-        access_token = jira_oauth.access_token
+    jira_oauth_console.print_url()
+    await jira_oauth.generate_access_token()
     print()
     print(f"Access Token: oauth_token={jira_oauth.access_token['oauth_token']}, "
           f"oauth_token_secret={jira_oauth.access_token['oauth_token_secret']}")
@@ -68,4 +74,4 @@ async def main():
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(future=main())
+    loop.run_until_complete(future=main(loop=loop))

@@ -2,9 +2,13 @@ from configparser import ConfigParser
 from pathlib import Path
 from typing import Union, Optional, Tuple
 from urllib import parse
+import asyncio
 import base64
 
-from aioify import aioify
+from aiohttp.web_app import Application
+from aiohttp.web_exceptions import HTTPOk
+from aiohttp.web_request import Request
+from aiohttp.web_response import Response
 from tlslite.utils import keyfactory
 from yarl import URL
 import aioauth2
@@ -46,23 +50,28 @@ class JiraOAuth:
             """Builds the base signature string."""
             key, raw = self.signing_base(request=request, consumer=consumer, token=token)
             private_key = keyfactory.parsePrivateKey(self.rsa_private_key)
+            # noinspection PyArgumentList
             signature = private_key.hashAndSign(bytes=bytearray(raw, 'utf8'))
 
             return base64.b64encode(signature)
 
     def __init__(self, consumer_key: Optional[str] = None, jira_url: Optional[str] = None,
                  rsa_private_key: Optional[str] = None, rsa_public_key: Optional[str] = None,
-                 test_jira_issue: Optional[str] = None, redirect_url: Optional[str] = None):
+                 test_jira_issue: Optional[str] = None, redirect_url: Optional[str] = None,
+                 app: Optional[Application] = None, loop: Optional[asyncio.AbstractEventLoop] = None):
         self.consumer_key = consumer_key
         self.jira_url = jira_url
         self.rsa_private_key = rsa_private_key
         self.rsa_public_key = rsa_public_key
         self.test_jira_issue = test_jira_issue
         self.redirect_url = redirect_url
+        self.app = app
+        self.loop = loop
         self.consumer = None
         self.request_token = None
         self.url = None
         self.access_token = {}
+        self._oauth_result_lock: asyncio.Lock = None
 
     @classmethod
     def from_file(cls) -> 'JiraOAuth':
@@ -107,6 +116,11 @@ class JiraOAuth:
             content = content.decode('UTF-8')
 
         self.request_token = dict(parse.parse_qsl(content))
+
+        if self.app is not None and self.redirect_url is not None:
+            self._oauth_result_lock = asyncio.Lock(loop=self.loop)
+            await self._oauth_result_lock.acquire()
+
         query = dict(oauth_token=self.request_token['oauth_token'])
         if self.redirect_url is not None:
             query.update(oauth_callback=self.redirect_url)
@@ -123,6 +137,9 @@ class JiraOAuth:
         client = await aioauth2.Client.create(consumer=self.consumer, token=token)
         await client.set_signature_method(JiraOAuth.SignatureMethod_RSA_SHA1(rsa_private_key=self.rsa_private_key))
 
+        if self._oauth_result_lock is not None:
+            await self._oauth_result_lock.acquire()
+
         resp, content = await client.request(uri=self._access_token_url, method="POST")
         # Response is coming in bytes. Let's convert it into String.
         # If output is in bytes. Let's convert it into String.
@@ -138,3 +155,8 @@ class JiraOAuth:
     def _read_file(path: PathOrStr) -> str:
         with open(file=str(path), mode='r') as f:
             return f.read()
+
+    async def process_oauth_result(self, request: Request) -> Response:
+        if request.query['oauth_token'] == self.request_token['oauth_token']:
+            self._oauth_result_lock.release()
+        return HTTPOk()
