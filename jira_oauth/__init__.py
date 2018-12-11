@@ -71,18 +71,9 @@ class JiraOAuth:
         return self
 
     @property
-    def _access_token_url(self) -> str:
-        return str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/access-token'))
-
-    @property
     def data_url(self) -> str:
         return str(
             URL(self.jira_url).with_path(path=f'/rest/api/2/issue/{self.test_jira_issue}').with_query(fields='summary'))
-
-    @staticmethod
-    def _read_file(path: PathOrStr) -> str:
-        with open(file=str(path), mode='r') as f:
-            return f.read()
 
     def read_jira_oauth_init_parameters_from_file(self) -> None:
         config = ConfigParser()
@@ -138,3 +129,12 @@ class JiraOAuth:
         if type(content) == bytes:
             content = content.decode('UTF-8')
         self.access_token = dict(parse.parse_qsl(qs=content))
+
+    @property
+    def _access_token_url(self) -> str:
+        return str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/access-token'))
+
+    @staticmethod
+    def _read_file(path: PathOrStr) -> str:
+        with open(file=str(path), mode='r') as f:
+            return f.read()
