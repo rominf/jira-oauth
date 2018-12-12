@@ -6,22 +6,23 @@ import asyncio
 import base64
 
 from aiohttp.web_app import Application
-from aiohttp.web_exceptions import HTTPOk
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 from tlslite.utils import keyfactory
 from yarl import URL
 import aioauth2
 import oauth2
+import poetry_version
 
 
 PathOrStr = Union[Path, str]
+__version__ = poetry_version.extract(source_file=__file__)
 
 
 class JiraOAuth:
     AUTH_RESPONSE_TEXT_DEFAULT = ('<!DOCTYPE html><html>'
-            '<head><script type="text/javascript">window.close()</script></head>'
-            '<body>Authorization was successful. You can close this page now.</body></html>')
+                                  '<head><script type="text/javascript">window.close()</script></head>'
+                                  '<body>Authorization was successful. You can close this page now.</body></html>')
 
     oauth_config_dir_path = Path.home() / '.oauthconfig'
     starter_oauth_config_file = oauth_config_dir_path / 'starter_oauth.config'
