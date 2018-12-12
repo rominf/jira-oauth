@@ -1,4 +1,8 @@
 # jira-oauth
+[![License](https://img.shields.io/pypi/l/jira-oauth.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/jira-oauth.svg)
+[![PyPI](https://img.shields.io/pypi/v/jira-oauth.svg)](https://pypi.org/project/jira-oauth/)
+
 Python library for Jira OAuth
 
 ## RSA private and public key creations
