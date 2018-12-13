@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jira-oauth"
-version = "0.1.9"
+version = "0.1.10"
 description = "Python library for Jira OAuth "
 authors = ["Roman Inflianskas <infroma@gmail.com>"]
 license = "Apache-2.0"

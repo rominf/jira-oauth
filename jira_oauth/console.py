@@ -44,7 +44,7 @@ class JiraOAuthConsole:
 
 
 # noinspection PyShadowingNames
-async def main(loop: asyncio.AbstractEventLoop) -> None:
+async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     jira_oauth = JiraOAuth.from_file()
 
     jira_oauth.app = Application()
@@ -72,6 +72,10 @@ async def main(loop: asyncio.AbstractEventLoop) -> None:
     await jira_oauth_console.check_access_token()
 
 
-if __name__ == '__main__':
+def main() -> None:
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(future=main(loop=loop))
+    loop.run_until_complete(future=async_main(loop=loop))
+
+
+if __name__ == '__main__':
+    main()
