@@ -63,5 +63,12 @@ Success!
 Issue key: IDEV-1, Summary: Internal Devepment Issue #1
 ```
 
+## Run with Docker
+
+    cp -R ~/.oauthconfig ./
+    docker build -t jira-oauth .
+    docker run -p 8080:8080 -it --rm jira-oauth
+
+
 ## Credits
 Thank you, Raju Kadam, for implementing https://github.com/rkadam/jira-oauth-generator
