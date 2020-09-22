@@ -89,7 +89,7 @@ class JiraOAuth:
     @property
     def data_url(self) -> str:
         return str(
-            URL(self.jira_url).with_path(path=f'/rest/api/2/issue/{self.test_jira_issue}').with_query(fields='summary'))
+            URL(self.jira_url).with_path(path=f'{self.jira_url_path}/rest/api/2/issue/{self.test_jira_issue}').with_query(fields='summary'))
 
     def read_jira_oauth_init_parameters_from_file(self) -> None:
         config = ConfigParser()
@@ -98,13 +98,14 @@ class JiraOAuth:
 
         self.consumer_key = config.get("oauth_config", "consumer_key")
         self.jira_url = config.get("oauth_config", "jira_url")
+        self.jira_url_path = URL(self.jira_url).path
         self.rsa_private_key = self._read_file(path=self.rsa_private_key_file_path)
         self.rsa_public_key = self._read_file(path=self.rsa_public_key_file_path)
         self.test_jira_issue = config.get("oauth_config", "test_jira_issue")
 
     async def generate_request_token_and_auth_url(self) -> None:
-        request_token_url = str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/request-token'))
-        authorize_url = str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/authorize'))
+        request_token_url = str(URL(self.jira_url).with_path(path=f'{self.jira_url_path}/plugins/servlet/oauth/request-token'))
+        authorize_url = str(URL(self.jira_url).with_path(path=f'{self.jira_url_path}/plugins/servlet/oauth/authorize'))
 
         self.consumer = oauth2.Consumer(key=self.consumer_key, secret=self.rsa_public_key)
         client = await aioauth2.Client.create(consumer=self.consumer)
@@ -156,7 +157,7 @@ class JiraOAuth:
 
     @property
     def _access_token_url(self) -> str:
-        return str(URL(self.jira_url).with_path(path='/plugins/servlet/oauth/access-token'))
+        return str(URL(self.jira_url).with_path(path=f'{self.jira_url_path}/plugins/servlet/oauth/access-token'))
 
     @staticmethod
     def _read_file(path: PathOrStr) -> str:
