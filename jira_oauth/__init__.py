@@ -97,7 +97,7 @@ class JiraOAuth:
         config.read(self.starter_oauth_config_file)
 
         self.consumer_key = config.get("oauth_config", "consumer_key")
-        self.jira_url = config.get("oauth_config", "jira_url")
+        self.jira_url = config.get("oauth_config", "jira_url").rstrip("/")
         self.jira_url_path = URL(self.jira_url).path
         self.rsa_private_key = self._read_file(path=self.rsa_private_key_file_path)
         self.rsa_public_key = self._read_file(path=self.rsa_public_key_file_path)
