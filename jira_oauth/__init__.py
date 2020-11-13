@@ -117,7 +117,7 @@ class JiraOAuth:
         # said access token.
         resp, content = await client.request(uri=request_token_url, method="POST")
         if resp['status'] != '200':
-            raise Exception(f"Invalid response resp['status']: content")
+            raise Exception(f"Invalid response {resp['status']}: {content}")
 
         # If output is in bytes. Let's convert it into String.
         if type(content) == bytes:
