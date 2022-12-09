@@ -10,7 +10,7 @@ repository = "https://github.com/rominf/jira-oauth"
 [tool.poetry.dependencies]
 python = "^3.6"
 asn1crypto = "^0.24.0"
-certifi = "^2018.11"
+certifi = ">=2018.11,<2023.0"
 cffi = "^1.11"
 chardet = "^3.0"
 click = "^7.0"
